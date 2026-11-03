@@ -184,18 +184,13 @@ select:focus-visible {
   min-width: 181px;
 }
 .brand > span {
+  max-width: 6.5em;
   font-family: var(--display);
-  font-size: 18px;
-  line-height: 1.05;
-  font-weight: 450;
-  letter-spacing: -0.5px;
-}
-.brand strong {
-  font-size: 25px;
+  font-size: 21px;
+  line-height: 1.15;
   font-weight: 650;
-}
-.brand-dot {
-  color: #88593f;
+  letter-spacing: -0.5px;
+  text-wrap: balance;
 }
 .brand img {
   border-radius: 13px;
@@ -1262,8 +1257,10 @@ select:focus-visible {
 }
 .question-counter {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 15px;
+  gap: 8px 15px;
   margin: 15px 0 22px;
   font-size: 11px;
   color: #62685a;
@@ -1276,6 +1273,16 @@ select:focus-visible {
 .question-counter strong span {
   font-weight: 550;
   color: #61675b;
+}
+.questions-remaining {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--subject-tint);
+  color: var(--subject-color);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
 }
 .question-card {
   border: 1px solid #e5e6dc;
@@ -2913,10 +2920,7 @@ select:focus-visible {
     gap: 10px;
   }
   .brand > span {
-    font-size: 16px;
-  }
-  .brand strong {
-    font-size: 23px;
+    font-size: 19px;
   }
   .brand img {
     width: 39px;
@@ -3353,10 +3357,7 @@ select:focus-visible {
     border-radius: 10px;
   }
   .brand > span {
-    font-size: 14px;
-  }
-  .brand strong {
-    font-size: 21px;
+    font-size: 17px;
   }
   .header-audio {
     margin-left: auto;

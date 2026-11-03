@@ -51,6 +51,8 @@ const server = http.createServer(async (request, response) => {
       .end(malformed ? 'Requête invalide.' : 'Page introuvable.');
   }
 });
-server.listen(port, '0.0.0.0', () => console.log(`Les petits curieux — http://0.0.0.0:${port}`));
+server.listen(port, '0.0.0.0', () =>
+  console.log(`Les curiosités de Louna — http://0.0.0.0:${port}`)
+);
 for (const signal of ['SIGTERM', 'SIGINT'])
   process.on(signal, () => server.close(() => process.exit(0)));
