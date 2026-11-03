@@ -112,6 +112,12 @@
       throw new Error('Pas assez de questions pour cette activité.');
     return selected.map((q) => prepareQuestion(q, rng));
   }
+  function questionProgress(index, total, currentFinished = false) {
+    // Include the finished question while its correction is still displayed.
+    // Deriving from state prevents a second decrement when clicking "La suite !".
+    const completed = Math.min(total, Math.max(0, index + (currentFinished ? 1 : 0)));
+    return { total, completed, remaining: total - completed };
+  }
   function recommendation(level, independent, total = SESSION_LENGTH) {
     if (independent / total >= 0.8) return Math.min(3, level + 1);
     if (independent / total <= 0.2) return Math.max(1, level - 1);
@@ -245,6 +251,7 @@
     withoutAccents,
     checkAnswer,
     buildQuestions,
+    questionProgress,
     recommendation,
     emptyProgress,
     sanitise,
