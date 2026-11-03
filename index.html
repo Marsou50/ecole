@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#245b4e" />
+    <meta
+      name="description"
+      content="Des mots, des nombres et de grandes découvertes. Des exercices de CP progressifs, des défis et des consignes à écouter, à son rythme."
+    />
+    <title>Les petits curieux — À toi les découvertes !</title>
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
+    <link
+      rel="preload"
+      href="./assets/fonts/outfit-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="./assets/styles.css" />
+    <script src="./assets/js/questions.js" defer></script>
+    <script src="./assets/js/engine.js" defer></script>
+    <script src="./assets/js/audio.js" defer></script>
+    <script src="./assets/js/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header" id="site-header"></header>
+    <main id="main" tabindex="-1">
+      <noscript
+        ><section class="noscript">
+          <h1>Bienvenue, petite curieuse !</h1>
+          <p>
+            Active JavaScript dans ton navigateur pour ouvrir les exercices et les consignes audio.
+            Aucun compte n’est nécessaire.
+          </p>
+        </section></noscript
+      >
+    </main>
+    <footer class="site-footer" id="site-footer"></footer>
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+    <dialog
+      class="confirm-dialog"
+      id="confirm-dialog"
+      aria-labelledby="dialog-title"
+      aria-describedby="dialog-description"
+    >
+      <div class="dialog-symbol" aria-hidden="true">?</div>
+      <h2 id="dialog-title"></h2>
+      <p id="dialog-description"></p>
+      <div class="dialog-actions">
+        <button type="button" class="button button-soft" id="dialog-cancel" autofocus>
+          Annuler
+        </button>
+        <button type="button" class="button button-primary" id="dialog-confirm">Confirmer</button>
+      </div>
+    </dialog>
+  </body>
+</html>
