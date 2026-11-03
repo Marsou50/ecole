@@ -105,7 +105,11 @@ async function answer(page, question) {
   else if (question.type === 'order') {
     for (let id = 0; id < question.tokens.length; id++)
       await page.locator(`[data-action="add-tile"][data-tile="${id}"]`).click();
-  } else await page.locator('#answer-input').fill(question.answer);
+  } else {
+    if (question.type === 'number')
+      await expect(page.locator('.number-answer .input-shell svg')).toHaveCount(0);
+    await page.locator('#answer-input').fill(question.answer);
+  }
   // Selecting or typing an answer is not the same as validating it.
   await expect(bar).toHaveAttribute('aria-valuenow', String(completedBefore));
   await page.locator('#check-answer').click();
@@ -354,6 +358,42 @@ test('une erreur ne fait pas avancer ; indices et explication restent disponible
   expect(data.history[0].revealed).toBe(1);
 });
 
+for (const width of [1440, 320]) {
+  test(`la saisie numérique reste centrée et sans icône 12 à ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const [question] = await begin(page, 'm-calcul', 1);
+    const input = page.getByRole('textbox', { name: 'Ta réponse', exact: true });
+    const decorations = page.locator('.number-answer .input-shell > span');
+    await expect(input).toBeVisible();
+    await expect(input).toHaveAttribute('inputmode', 'numeric');
+    await expect(input).toHaveValue('');
+    await expect(decorations).toHaveCount(0);
+    await expect(page.locator('.exercise-heading .mission-icon svg')).toHaveCount(1);
+    const padding = await input.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { left: style.paddingLeft, right: style.paddingRight };
+    });
+    expect(padding.left).toBe(padding.right);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true
+    );
+    fs.mkdirSync(path.resolve('.artifacts'), { recursive: true });
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    await page.screenshot({ path: `.artifacts/number-input-${width}.png`, fullPage: true });
+    // Remove only the decoration, not the ability to enter the number 12 as an answer.
+    await input.fill('12');
+    await expect(input).toHaveValue('12');
+    await expectQuestionProgress(page, 0);
+    await answer(page, question);
+    await expect(decorations).toHaveCount(0);
+    await expect(input).toHaveAttribute('readonly', '');
+    await page.locator('#check-answer').click();
+    await expect(input).toHaveValue('');
+    await expect(decorations).toHaveCount(0);
+    await expectQuestionProgress(page, 1);
+  });
+}
+
 test('les mots se déplacent au clavier et peuvent être retirés ou remis à zéro', async ({
   page
 }) => {
@@ -374,6 +414,10 @@ test('dictée : aucune lecture automatique, mot caché et voix à la demande', a
   await mockVoice(page);
   const series = await begin(page, 'f-dictee', 1, 130);
   const question = series[0];
+  await expect(page.locator('#answer-input')).toHaveAttribute('inputmode', 'text');
+  await expect(
+    page.locator('.text-answer .input-shell > span[aria-hidden="true"] svg')
+  ).toHaveCount(1);
   expect(await page.evaluate(() => window.__spoken)).toEqual([]);
   await expect(page.locator('.adult-word')).toHaveCount(0);
   expect((await page.locator('main').innerText()).toLowerCase()).not.toContain(question.answer);
