@@ -86,15 +86,32 @@ async function begin(page, missionId, level, seed = 83) {
   await expect(page.locator('#question-title')).toHaveText(series[0].prompt);
   return series;
 }
+async function expectQuestionProgress(page, completed) {
+  const bar = page.getByRole('progressbar', { name: 'Questions terminées' });
+  const total = Number(await bar.getAttribute('aria-valuemax'));
+  const remaining = total - completed;
+  await expect(bar).toHaveAttribute('aria-valuenow', String(completed));
+  await expect(page.locator('.session-progress > span')).toHaveCount(total);
+  await expect(page.locator('.session-progress > .is-done')).toHaveCount(completed);
+  await expect(page.locator('.questions-remaining')).toHaveText(
+    `${remaining} ${remaining > 1 ? 'questions restantes' : 'question restante'}`
+  );
+}
 async function answer(page, question) {
+  const bar = page.getByRole('progressbar', { name: 'Questions terminées' });
+  const completedBefore = Number(await bar.getAttribute('aria-valuenow'));
   if (question.type === 'choice')
     await page.locator('.choice-option').nth(question.options.indexOf(question.answer)).click();
   else if (question.type === 'order') {
     for (let id = 0; id < question.tokens.length; id++)
       await page.locator(`[data-action="add-tile"][data-tile="${id}"]`).click();
   } else await page.locator('#answer-input').fill(question.answer);
+  // Selecting or typing an answer is not the same as validating it.
+  await expect(bar).toHaveAttribute('aria-valuenow', String(completedBefore));
   await page.locator('#check-answer').click();
   await expect(page.locator('.feedback-success')).toContainText('Bien trouvé');
+  // Count the answer immediately, while its explanation is still on screen.
+  await expectQuestionProgress(page, completedBefore + 1);
 }
 async function complete(page, series) {
   for (const question of series) {
@@ -149,6 +166,57 @@ for (const mission of Q.missions) {
   });
 }
 
+test('le compteur diminue de cinq à zéro dès la validation et repart à cinq pour une nouvelle séance', async ({
+  page
+}) => {
+  const series = await begin(page, 'm-calcul', 1);
+  await expectQuestionProgress(page, 0);
+  for (let index = 0; index < series.length; index++) {
+    await answer(page, series[index]);
+    // Keep the current correction visible; the question number changes only on Next.
+    await expect(page.locator('.question-counter strong')).toHaveText(
+      `Question ${index + 1} sur 5`
+    );
+    await expect(page.locator('.session-progress > .is-current')).toHaveCount(0);
+    if (index === series.length - 1) {
+      await expect(page.locator('.questions-remaining')).toHaveText('0 question restante');
+      await expect(page.locator('#check-answer')).toHaveText('Voir mon bilan');
+    }
+    await page.locator('#check-answer').click();
+    if (index < series.length - 1) {
+      // Advancing must not decrement a second time.
+      await expectQuestionProgress(page, index + 1);
+      await expect(page.locator('.session-progress > .is-current')).toHaveCount(1);
+    }
+  }
+  await expect(page.getByRole('heading', { name: 'Une découverte de plus !' })).toBeVisible();
+  await page.locator('[data-action="restart"]').click();
+  await expectQuestionProgress(page, 0);
+  await expect(page.locator('.question-counter strong')).toHaveText('Question 1 sur 5');
+  const data = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), E.STORAGE_KEY);
+  expect(data.history).toHaveLength(1);
+});
+
+test('le compteur reste exact après reprise, erreur, indice et nouvelle validation', async ({
+  page
+}) => {
+  const series = await begin(page, 'm-calcul', 1);
+  await answer(page, series[0]);
+  await page.getByRole('link', { name: 'Mon espace', exact: true }).click();
+  await page.getByRole('link', { name: 'Reprendre mon aventure', exact: false }).click();
+  await expectQuestionProgress(page, 1);
+  await expect(page.locator('.feedback-success')).toContainText(series[0].explanation);
+  await page.locator('#check-answer').click();
+  await expectQuestionProgress(page, 1);
+  await page.locator('#answer-input').fill('999');
+  await page.locator('#check-answer').click();
+  await expectQuestionProgress(page, 1);
+  await page.getByRole('button', { name: 'Un petit indice', exact: true }).click();
+  await expectQuestionProgress(page, 1);
+  await answer(page, series[1]);
+  await expectQuestionProgress(page, 2);
+});
+
 test('une séance complète est enregistrée une seule fois et reste après actualisation', async ({
   page
 }) => {
@@ -187,14 +255,18 @@ test('une erreur ne fait pas avancer ; indices et explication restent disponible
   await page.locator('#answer-input').fill('999');
   await page.locator('#check-answer').click();
   await expect(page.locator('.feedback-retry')).toContainText('Pas tout à fait');
+  await expectQuestionProgress(page, 0);
   await expect(page.locator('.question-counter')).toContainText('Question 1');
   await page.getByRole('button', { name: 'Un petit indice', exact: true }).click();
   await expect(page.locator('.hint-box')).toContainText(series[0].hint);
+  await expectQuestionProgress(page, 0);
   await page.locator('#check-answer').click();
   await page.getByRole('button', { name: 'Comprendre la réponse', exact: true }).click();
   await expect(page.locator('.feedback-success')).toContainText('Regardons ensemble');
+  await expectQuestionProgress(page, 1);
   await expect(page.locator('.feedback-success')).toContainText(series[0].explanation);
   await page.locator('#check-answer').click();
+  await expectQuestionProgress(page, 1);
   await complete(page, series.slice(1));
   const data = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), E.STORAGE_KEY);
   expect(data.history[0].independent).toBe(4);
@@ -374,8 +446,11 @@ test('mobile : pas de débordement, toutes les réponses et commandes restent ut
   await page.goto('/#/parents');
   await a11y(page);
   await page.setViewportSize({ width: 320, height: 720 });
-  await begin(page, 'm-logique', 3);
+  const [smallScreenQuestion] = await begin(page, 'm-logique', 3);
+  await answer(page, smallScreenQuestion);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  // Avoid capturing sticky navigation halfway down a full-page screenshot.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await page.screenshot({ path: '.artifacts/exercise-mobile.png', fullPage: true });
 });
 

@@ -35,6 +35,7 @@ Le site est entièrement statique : `index.html` et `assets/` peuvent aussi êtr
 
 - **Trois niveaux par activité**, toujours ouverts : _Je découvre_, _Je progresse_, _Je me dépasse_.
 - **Cinq questions par séance**, sans chronomètre ni classement.
+- Le **compteur de questions restantes** et la barre de progression se mettent à jour dès qu’une question est terminée (bonne réponse validée ou correction demandée), sans attendre le clic sur _La suite !_ et sans double décompte. Les erreurs, indices et écoutes ne consomment pas de question.
 - **153 questions rédigées** pour le français et la géométrie, plus des questions de maths générées avec des valeurs renouvelées.
 - Questions sans doublon dans une séance ; les questions non vues lors de la dernière séance du même niveau sont privilégiées.
 - Indices facultatifs, nouveaux essais et corrections expliquées. Après deux erreurs, l’enfant peut demander à comprendre la réponse plutôt que rester bloquée.

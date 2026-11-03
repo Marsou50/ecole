@@ -163,6 +163,33 @@ test('correction : espaces et casse acceptés, accents enseignés, nombres stric
   );
 });
 
+test('compteur : une question terminée compte avant le passage à la suivante', () => {
+  for (const total of [1, 3, E.SESSION_LENGTH]) {
+    for (let index = 0; index < total; index++) {
+      assert.deepEqual(E.questionProgress(index, total, false), {
+        total,
+        completed: index,
+        remaining: total - index
+      });
+      const finished = E.questionProgress(index, total, true);
+      assert.deepEqual(finished, {
+        total,
+        completed: index + 1,
+        remaining: total - index - 1
+      });
+      // Rendering again or moving to the next question must not count twice.
+      assert.deepEqual(E.questionProgress(index, total, true), finished);
+      assert.deepEqual(E.questionProgress(index + 1, total, false), finished);
+    }
+  }
+});
+
+test('compteur : la progression reste bornée entre zéro et le nombre de questions', () => {
+  assert.deepEqual(E.questionProgress(0, 0), { total: 0, completed: 0, remaining: 0 });
+  assert.deepEqual(E.questionProgress(-1, 5), { total: 5, completed: 0, remaining: 5 });
+  assert.deepEqual(E.questionProgress(5, 5, true), { total: 5, completed: 5, remaining: 0 });
+});
+
 test('recommandations bornées, aucune difficulté verrouillée', () => {
   assert.equal(E.recommendation(1, 5), 2);
   assert.equal(E.recommendation(2, 4), 3);
