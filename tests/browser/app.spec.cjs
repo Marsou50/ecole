@@ -153,6 +153,77 @@ test('accueil, navigation, illustrations locales et six aventures par univers', 
   expect(external).toEqual([]);
 });
 
+test('le nom de Louna reste affiché après chargement, navigation, actualisation et lecture', async ({
+  page
+}) => {
+  await mockVoice(page);
+  await page.goto('/');
+  await expect(page).toHaveTitle('À toi les découvertes ! · Les curiosités de Louna');
+  await expect(page.getByRole('link', { name: 'Les curiosités de Louna, accueil' })).toHaveText(
+    'Les curiosités de Louna'
+  );
+  await page.getByRole('button', { name: 'Écouter l’accueil', exact: true }).click();
+  expect((await page.evaluate(() => window.__spoken))[0].text).toContain('Les curiosités de Louna');
+  for (const route of [
+    '/#/maths',
+    '/#/francais',
+    '/#/carnet',
+    '/#/parents',
+    '/#/activite/m-nombres'
+  ]) {
+    await page.goto(route);
+    await expect(page).toHaveTitle(/ · Les curiosités de Louna$/);
+    await expect(page.locator('.brand')).toHaveText('Les curiosités de Louna');
+  }
+  await page.reload();
+  await expect(page).toHaveTitle(/ · Les curiosités de Louna$/);
+  await expect(page.locator('.brand')).toHaveText('Les curiosités de Louna');
+});
+
+test('modifier le titre HTML suffit à renommer le bandeau, les pages et l’accueil vocal', async ({
+  page
+}) => {
+  await mockVoice(page);
+  const name = 'Les défis de Zoé';
+  const html = fs
+    .readFileSync(path.resolve('index.html'), 'utf8')
+    .replace(
+      '<title>Les curiosités de Louna — À toi les découvertes !</title>',
+      `<title>${name} — À toi les découvertes !</title>`
+    );
+  await page.route('http://127.0.0.1:4173/', (route) =>
+    route.fulfill({ contentType: 'text/html; charset=utf-8', body: html })
+  );
+  await page.goto('/');
+  await expect(page).toHaveTitle(`À toi les découvertes ! · ${name}`);
+  await expect(page.getByRole('link', { name: `${name}, accueil` })).toHaveText(name);
+  await page.getByRole('button', { name: 'Écouter l’accueil', exact: true }).click();
+  expect((await page.evaluate(() => window.__spoken))[0].text).toContain(name);
+  await page.getByRole('link', { name: 'Mon carnet', exact: true }).click();
+  await expect(page).toHaveTitle(new RegExp(` · ${name}$`));
+  await expect(page.locator('.brand')).toHaveText(name);
+});
+
+test('les anciennes URL des scripts ne sont plus utilisées pour le titre et le compteur', async ({
+  page
+}) => {
+  const obsoleteRequests = [];
+  // An old response at an unversioned URL must not be used by the updated page.
+  await page.route(/\/assets\/js\/[^/?]+\.js$/, (route) => {
+    obsoleteRequests.push(route.request().url());
+    return route.fulfill({
+      contentType: 'application/javascript',
+      body: 'throw new Error("Ancienne ressource non versionnée utilisée");'
+    });
+  });
+  const [question] = await begin(page, 'm-nombres', 2);
+  await expect(page).toHaveTitle(/ · Les curiosités de Louna$/);
+  await expect(page.locator('.brand')).toHaveText('Les curiosités de Louna');
+  await answer(page, question);
+  await expect(page.locator('.questions-remaining')).toHaveText('4 questions restantes');
+  expect(obsoleteRequests).toEqual([]);
+});
+
 for (const mission of Q.missions) {
   test(`${mission.title} : les trois niveaux sont accessibles et corrigent une réponse juste`, async ({
     page
@@ -166,36 +237,45 @@ for (const mission of Q.missions) {
   });
 }
 
-test('le compteur diminue de cinq à zéro dès la validation et repart à cinq pour une nouvelle séance', async ({
-  page
-}) => {
-  const series = await begin(page, 'm-calcul', 1);
-  await expectQuestionProgress(page, 0);
-  for (let index = 0; index < series.length; index++) {
-    await answer(page, series[index]);
-    // Keep the current correction visible; the question number changes only on Next.
-    await expect(page.locator('.question-counter strong')).toHaveText(
-      `Question ${index + 1} sur 5`
-    );
-    await expect(page.locator('.session-progress > .is-current')).toHaveCount(0);
-    if (index === series.length - 1) {
-      await expect(page.locator('.questions-remaining')).toHaveText('0 question restante');
-      await expect(page.locator('#check-answer')).toHaveText('Voir mon bilan');
+for (const [missionId, level] of [
+  ['m-calcul', 1],
+  ['m-nombres', 1],
+  ['m-nombres', 2],
+  ['m-nombres', 3]
+]) {
+  test(`${missionId}, niveau ${level} : le compteur diminue de cinq à zéro et repart à cinq`, async ({
+    page
+  }) => {
+    const series = await begin(page, missionId, level);
+    await expectQuestionProgress(page, 0);
+    for (let index = 0; index < series.length; index++) {
+      await answer(page, series[index]);
+      // Keep the current correction visible; the question number changes only on Next.
+      await expect(page.locator('.question-counter strong')).toHaveText(
+        `Question ${index + 1} sur 5`
+      );
+      await expect(page.locator('.session-progress > .is-current')).toHaveCount(0);
+      if (index === series.length - 1) {
+        await expect(page.locator('.questions-remaining')).toHaveText('0 question restante');
+        await expect(page.locator('#check-answer')).toHaveText('Voir mon bilan');
+      }
+      await page.locator('#check-answer').click();
+      if (index < series.length - 1) {
+        // Advancing must not decrement a second time.
+        await expectQuestionProgress(page, index + 1);
+        await expect(page.locator('.session-progress > .is-current')).toHaveCount(1);
+      }
     }
-    await page.locator('#check-answer').click();
-    if (index < series.length - 1) {
-      // Advancing must not decrement a second time.
-      await expectQuestionProgress(page, index + 1);
-      await expect(page.locator('.session-progress > .is-current')).toHaveCount(1);
-    }
-  }
-  await expect(page.getByRole('heading', { name: 'Une découverte de plus !' })).toBeVisible();
-  await page.locator('[data-action="restart"]').click();
-  await expectQuestionProgress(page, 0);
-  await expect(page.locator('.question-counter strong')).toHaveText('Question 1 sur 5');
-  const data = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), E.STORAGE_KEY);
-  expect(data.history).toHaveLength(1);
-});
+    await expect(page.getByRole('heading', { name: 'Une découverte de plus !' })).toBeVisible();
+    await page.locator('[data-action="restart"]').click();
+    await expectQuestionProgress(page, 0);
+    await expect(page.locator('.question-counter strong')).toHaveText('Question 1 sur 5');
+    const data = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), E.STORAGE_KEY);
+    expect(data.history).toHaveLength(1);
+    expect(data.history[0].missionId).toBe(missionId);
+    expect(data.history[0].level).toBe(level);
+  });
+}
 
 test('le compteur reste exact après reprise, erreur, indice et nouvelle validation', async ({
   page
@@ -433,7 +513,14 @@ test('mobile : pas de débordement, toutes les réponses et commandes restent ut
   await page.goto('/');
   fs.mkdirSync(path.resolve('.artifacts'), { recursive: true });
   await page.screenshot({ path: '.artifacts/home-mobile.png', fullPage: true });
-  for (const missionId of ['m-logique', 'm-dizaines', 'f-phrases', 'f-dictee', 'f-histoires']) {
+  for (const missionId of [
+    'm-nombres',
+    'm-logique',
+    'm-dizaines',
+    'f-phrases',
+    'f-dictee',
+    'f-histoires'
+  ]) {
     const [question] = await begin(page, missionId, 3);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true
@@ -446,8 +533,11 @@ test('mobile : pas de débordement, toutes les réponses et commandes restent ut
   await page.goto('/#/parents');
   await a11y(page);
   await page.setViewportSize({ width: 320, height: 720 });
-  const [smallScreenQuestion] = await begin(page, 'm-logique', 3);
+  const [smallScreenQuestion] = await begin(page, 'm-nombres', 3);
+  await expect(page.locator('.brand')).toHaveText('Les curiosités de Louna');
   await answer(page, smallScreenQuestion);
+  await expect(page.locator('.questions-remaining')).toHaveText('4 questions restantes');
+  await expect(page.locator('.questions-remaining')).toHaveCSS('font-size', '13px');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   // Avoid capturing sticky navigation halfway down a full-page screenshot.
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));

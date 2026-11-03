@@ -1,4 +1,4 @@
-# Les petits curieux
+# Les curiosités de Louna
 
 Un espace de **mathématiques et de français pour le CP**, avec des défis plus avancés accessibles librement. Conçu pour une enfant de 6 ans qui lit déjà des mots et compte jusqu’à 100 : la difficulté dépend de chaque compétence, pas uniquement de l’âge.
 
@@ -21,6 +21,21 @@ npm run dev -- --port 8080
 ```
 
 Le site est entièrement statique : `index.html` et `assets/` peuvent aussi être hébergés sur un serveur statique, y compris dans un sous-dossier. Les liens internes utilisent des fragments `#/…` ; aucune réécriture de routes côté hébergeur n’est nécessaire. Les polices et illustrations sont locales, sans CDN.
+
+## Nom du site et mises à jour
+
+Le nom public est défini **dans le `<title>` de `index.html`, avant `—`**. Le bandeau, les titres des pages et l’accueil vocal reprennent automatiquement ce nom : le script ne remplace plus une modification du titre par un ancien nom codé en dur.
+
+Les URL des quatre scripts et de la feuille de style portent une empreinte de leur contenu (`?v=…`). Ainsi, une page mise à jour ne réutilise pas les anciennes URL de ces fichiers dans le cache du navigateur. Après une modification des scripts ou des styles, avant les tests et la publication :
+
+```sh
+npm run version:assets
+npm test
+```
+
+La commande ne compile rien : elle actualise uniquement les URL dans `index.html`. Elle peut être répétée sans changement supplémentaire ; `npm run version:assets -- --check` vérifie les empreintes sans écrire. Les tests refusent une empreinte périmée. Les chemins restent relatifs pour fonctionner aussi sous `/ecole/`.
+
+Une correction dans l’aperçu local n’est pas encore publiée : pour mettre le site public à jour, les modifications doivent être fusionnées dans `main`, puis le déploiement GitHub Pages correspondant doit réussir.
 
 ## Les 12 aventures
 
@@ -69,7 +84,7 @@ Certaines voix système utilisent un service de synthèse en ligne pour lire le 
 
 ## Carnet et confidentialité
 
-La clé locale `les-petits-curieux.v1` conserve les réglages audio et les **200 dernières séances terminées**, avec leur activité, niveau, date, nombre de réussites sans aide, indices et identifiants des questions. Aucun prénom, réponse saisie ou enregistrement audio n’est conservé.
+La clé locale `les-petits-curieux.v1` conserve les réglages audio et les **200 dernières séances terminées**, avec leur activité, niveau, date, nombre de réussites sans aide, indices et identifiants des questions. Cette clé historique est conservée malgré le nouveau nom du site, pour ne pas perdre les progrès et les réglages existants. Aucun prénom, réponse saisie ou enregistrement audio n’est conservé dans le carnet.
 
 - Les progrès restent dans ce navigateur, sans synchronisation entre appareils, sans compte et sans outils d’analyse d’audience.
 - Une séance en cours peut être reprise depuis l’accueil tant que la page reste ouverte. **Une actualisation ferme la séance non terminée** ; seules les séances terminées sont enregistrées.
@@ -91,6 +106,7 @@ assets/
     audio.js                   Voix françaises et effets sonores
     app.js                     Navigation et interactions
 scripts/serve.mjs              Petit serveur statique de développement
+scripts/version-assets.mjs     Empreintes de cache des scripts et de la feuille de style
 tests/                         Tests unitaires et parcours navigateur
 ```
 

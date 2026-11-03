@@ -2,6 +2,8 @@
   'use strict';
   const Q = window.CurieuxQuestions;
   const E = window.CurieuxEngine;
+  // Keep the HTML title as the single source of the public name, before routing changes it.
+  const siteName = document.title.split(' — ')[0].trim();
   const esc = E.escapeHtml;
   const main = document.getElementById('main');
   const header = document.getElementById('site-header');
@@ -169,7 +171,7 @@
   function renderHeader() {
     const route = location.hash.slice(1) || '/';
     header.innerHTML = `<div class="header-inner">
-      <a class="brand" href="#/" aria-label="Les petits curieux, accueil"><img src="./assets/favicon.svg" width="43" height="43" alt=""><span>les petits<br><strong>curieux<span class="brand-dot">.</span></strong></span></a>
+      <a class="brand" href="#/" aria-label="${esc(siteName)}, accueil"><img src="./assets/favicon.svg" width="43" height="43" alt=""><span>${esc(siteName)}</span></a>
       <nav class="main-nav" aria-label="Navigation principale">
         <a href="#/" ${route === '/' ? 'aria-current="page"' : ''}>${icon('home')}<span>Mon espace</span></a>
         <a href="#/carnet" ${route === '/carnet' ? 'aria-current="page"' : ''}>${icon('bookmark')}<span>Mon carnet</span></a>
@@ -183,7 +185,7 @@
     footer.innerHTML = `<div class="footer-inner"><span class="footer-motto">${icon('leaf')} Les grandes idées commencent par la curiosité.</span><a href="#/parents">Sans compte · À ton rythme ${icon('arrow')}</a></div>${!storageAvailable ? '<p class="storage-notice">Le stockage est indisponible : les progrès de cette visite ne seront pas conservés après fermeture de la page.</p>' : ''}`;
   }
   function pageTitle(title) {
-    document.title = `${title} · Les petits curieux`;
+    document.title = `${title} · ${siteName}`;
   }
   function backLink(subject) {
     return `<a class="back-link" href="#/${subject || ''}">${icon('back')}${subject ? `Les aventures de ${subject === 'maths' ? 'maths' : 'français'}` : 'Mon espace'}</a>`;
@@ -524,7 +526,7 @@
     const kind = button.dataset.speak;
     if (kind === 'welcome') {
       audio.speak(
-        'Bienvenue chez les petits curieux ! Des mots, des nombres et de grandes découvertes t’attendent. Choisis les mathématiques ou le français. Prends ton temps : ici, tu as le droit de chercher, d’essayer et de recommencer.'
+        `Bienvenue dans ${siteName} ! Des mots, des nombres et de grandes découvertes t’attendent. Choisis les mathématiques ou le français. Prends ton temps : ici, tu as le droit de chercher, d’essayer et de recommencer.`
       );
       return;
     }
