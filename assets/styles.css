@@ -1516,7 +1516,7 @@ select:focus-visible {
   font-size: 38px;
   font-weight: 450;
   color: var(--green);
-  padding: 12px 49px 12px 25px;
+  padding: 12px 25px;
   outline-color: #9a7745;
 }
 .input-shell > span {
@@ -1546,7 +1546,7 @@ select:focus-visible {
   text-align: left;
   height: 68px;
   letter-spacing: 0.2px;
-  padding-left: 21px;
+  padding: 12px 49px 12px 21px;
 }
 .text-answer .input-shell input::placeholder {
   font-size: 20px;
@@ -4444,7 +4444,7 @@ select:focus-visible {
     height: 74px;
     font-size: 34px;
     padding-left: 20px;
-    padding-right: 42px;
+    padding-right: 20px;
   }
   .input-shell > span {
     right: 14px;
@@ -4454,6 +4454,7 @@ select:focus-visible {
   }
   .text-answer .input-shell input {
     font-size: 25px;
+    padding-right: 42px;
   }
   .text-answer .input-shell input::placeholder {
     font-size: 18px;
